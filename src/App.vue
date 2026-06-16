@@ -1,160 +1,83 @@
 <script setup lang="ts">
-import { ref } from "vue";
-import { invoke } from "@tauri-apps/api/tauri";
+import { ref, onMounted } from 'vue'
 
-const greetMsg = ref("");
-const name = ref("");
+const currentView = ref('resume')
 
-async function greet() {
-  // Learn more about Tauri commands at https://v1.tauri.app/v1/guides/features/command
-  greetMsg.value = await invoke("greet", { name: name.value });
-}
+onMounted(() => {
+  const updateRoute = () => {
+    const hash = window.location.hash
+    if (hash.includes('/pause')) {
+      currentView.value = 'pause'
+    } else {
+      currentView.value = 'resume'
+    }
+  }
+
+  window.addEventListener('hashchange', updateRoute)
+  updateRoute()
+})
 </script>
 
 <template>
-  <main class="container">
-    <h1>Welcome to Tauri + Vue</h1>
+  <v-app theme="dark">
+    <v-main class="d-flex align-center justify-center fill-height">
+      <!-- PAUSE OVERLAY VIEW -->
+      <v-container v-if="currentView === 'pause'" class="text-center pa-4">
+        <v-card class="mx-auto pa-6 rounded-lg border-thin" max-width="460" color="#1A1A1A" elevation="12">
+          <v-card-title class="text-h6 font-weight-bold text-left px-0 pb-1">
+            August Session
+          </v-card-title>
+          <v-card-subtitle class="text-left px-0 pb-4 text-grey-darken-1">
+            Pause Workspace (M1 Backend Connected)
+          </v-card-subtitle>
+          <v-textarea
+            label="What should you remember?"
+            variant="outlined"
+            placeholder="Write a sentence to future-you..."
+            rows="3"
+            hide-details
+            disabled
+            class="mb-4"
+          ></v-textarea>
+          <v-card-actions class="justify-end px-0">
+            <v-btn color="primary" variant="flat" disabled class="px-6">Done</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-container>
 
-    <div class="row">
-      <a href="https://vite.dev" target="_blank">
-        <img src="/vite.svg" class="logo vite" alt="Vite logo" />
-      </a>
-      <a href="https://tauri.app" target="_blank">
-        <img src="/tauri.svg" class="logo tauri" alt="Tauri logo" />
-      </a>
-      <a href="https://vuejs.org/" target="_blank">
-        <img src="./assets/vue.svg" class="logo vue" alt="Vue logo" />
-      </a>
-    </div>
-    <p>Click on the Tauri, Vite, and Vue logos to learn more.</p>
+      <!-- RESUME/MAIN VIEW -->
+      <v-container v-else class="text-center pa-4">
+        <v-card class="mx-auto pa-8 rounded-lg border-thin" max-width="620" color="#1A1A1A" elevation="8">
+          <v-card-title class="text-h4 font-weight-black text-left px-0 pb-2">
+            August Session
+          </v-card-title>
+          <v-card-subtitle class="text-subtitle-1 text-left px-0 pb-6 text-grey-darken-1">
+            A Workspace Time Machine
+          </v-card-subtitle>
+          
+          <v-alert
+            type="info"
+            color="blue-darken-4"
+            variant="tonal"
+            class="text-left mb-6 rounded-lg"
+            title="Milestone 1 Backend Loaded"
+          >
+            SQLite schema initialization is active. System tray icon and Ctrl+Shift+P global hotkey are running. The interactive user forms and controls will be wired up during Milestone 3.
+          </v-alert>
 
-    <form class="row" @submit.prevent="greet">
-      <input id="greet-input" v-model="name" placeholder="Enter a name..." />
-      <button type="submit">Greet</button>
-    </form>
-    <p>{{ greetMsg }}</p>
-  </main>
+          <v-btn color="grey-darken-3" disabled block size="large" variant="flat" class="rounded-lg">
+            Reopen My Desk
+          </v-btn>
+        </v-card>
+      </v-container>
+    </v-main>
+  </v-app>
 </template>
 
-<style scoped>
-.logo.vite:hover {
-  filter: drop-shadow(0 0 2em #747bff);
-}
-
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #249b73);
-}
-
-</style>
 <style>
-:root {
-  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 400;
-
-  color: #0f0f0f;
-  background-color: #f6f6f6;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-text-size-adjust: 100%;
+html, body {
+  overflow: hidden;
+  user-select: none;
+  background-color: #121212 !important;
 }
-
-.container {
-  margin: 0;
-  padding-top: 10vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  text-align: center;
-}
-
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: 0.75s;
-}
-
-.logo.tauri:hover {
-  filter: drop-shadow(0 0 2em #24c8db);
-}
-
-.row {
-  display: flex;
-  justify-content: center;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-
-a:hover {
-  color: #535bf2;
-}
-
-h1 {
-  text-align: center;
-}
-
-input,
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  color: #0f0f0f;
-  background-color: #ffffff;
-  transition: border-color 0.25s;
-  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
-}
-
-button {
-  cursor: pointer;
-}
-
-button:hover {
-  border-color: #396cd8;
-}
-button:active {
-  border-color: #396cd8;
-  background-color: #e8e8e8;
-}
-
-input,
-button {
-  outline: none;
-}
-
-#greet-input {
-  margin-right: 5px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #f6f6f6;
-    background-color: #2f2f2f;
-  }
-
-  a:hover {
-    color: #24c8db;
-  }
-
-  input,
-  button {
-    color: #ffffff;
-    background-color: #0f0f0f98;
-  }
-  button:active {
-    background-color: #0f0f0f69;
-  }
-}
-
 </style>
