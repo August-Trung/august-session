@@ -35,6 +35,7 @@ Current status:
 
 - M1 is complete.
 - M2 is complete.
+- M3 is complete.
 - Continue from the current repository state.
 - Inspect existing files before making changes.
 - Previous work may have been interrupted because of quota limits.
@@ -64,22 +65,22 @@ Rules:
 
 Current milestone:
 
-M3
+M4
 
 Requirements:
 
 - Read V010_IMPLEMENTATION_TASKS.md carefully.
-- Determine which M3 tasks are already completed.
+- Determine which M4 tasks are already completed.
 - Resume from the first unfinished task.
 - Follow the exact task order and dependencies defined in V010_IMPLEMENTATION_TASKS.md.
 - Do not skip tasks.
 - Do not reorder tasks.
-- Stop when M3 is fully completed.
+- Stop when M4 is fully completed.
 
 Output:
 
 1. Current progress summary.
-2. Completed M3 tasks.
+2. Completed M4 tasks.
 3. Current task being implemented.
 4. Files created.
 5. Files modified.
@@ -88,10 +89,10 @@ Output:
 8. Known limitations.
 9. Suggested commit message.
 
-When M3 is fully completed:
+When M4 is fully completed:
 
-- Stop instead of starting M4.
-- Provide an M3 completion summary.
+- Stop instead of starting verification/release.
+- Provide an M4 completion summary.
 - List remaining milestones.
 - Identify technical debt and follow-up work.
 - Recommend the next milestone to implement.
