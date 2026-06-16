@@ -1,10 +1,32 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod capture;
 mod db;
 mod tray;
+mod window_manager;
 
 use tauri::GlobalShortcutManager;
+
+#[tauri::command]
+fn test_screenshot(app_handle: tauri::AppHandle) -> Result<String, String> {
+    let app_data_dir = app_handle
+        .path_resolver()
+        .app_data_dir()
+        .ok_or_else(|| "Failed to get app data directory".to_string())?;
+
+    let screenshots_dir = app_data_dir.join("screenshots");
+    let test_filename = format!("test_{}.webp", chrono::Utc::now().timestamp());
+    let test_path = screenshots_dir.join(&test_filename);
+
+    capture::capture_screenshot(&test_path)?;
+    Ok(test_path.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+fn test_enumerate() -> Result<Vec<window_manager::WindowInfo>, String> {
+    Ok(window_manager::enumerate_windows())
+}
 
 fn main() {
     tauri::Builder::default()
@@ -37,6 +59,7 @@ fn main() {
 
             Ok(())
         })
+        .invoke_handler(tauri::generate_handler![test_screenshot, test_enumerate])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
