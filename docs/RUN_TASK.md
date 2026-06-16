@@ -33,6 +33,8 @@ Tech stack:
 
 Current status:
 
+- M1 is complete.
+- M2 is complete.
 - Continue from the current repository state.
 - Inspect existing files before making changes.
 - Previous work may have been interrupted because of quota limits.
@@ -62,22 +64,22 @@ Rules:
 
 Current milestone:
 
-M1
+M3
 
 Requirements:
 
 - Read V010_IMPLEMENTATION_TASKS.md carefully.
-- Determine which M1 tasks are already completed.
+- Determine which M3 tasks are already completed.
 - Resume from the first unfinished task.
 - Follow the exact task order and dependencies defined in V010_IMPLEMENTATION_TASKS.md.
 - Do not skip tasks.
 - Do not reorder tasks.
-- Stop when M1 is fully completed.
+- Stop when M3 is fully completed.
 
 Output:
 
 1. Current progress summary.
-2. Completed M1 tasks.
+2. Completed M3 tasks.
 3. Current task being implemented.
 4. Files created.
 5. Files modified.
@@ -86,10 +88,10 @@ Output:
 8. Known limitations.
 9. Suggested commit message.
 
-When M1 is fully completed:
+When M3 is fully completed:
 
-- Stop instead of starting M2.
-- Provide an M1 completion summary.
+- Stop instead of starting M4.
+- Provide an M3 completion summary.
 - List remaining milestones.
 - Identify technical debt and follow-up work.
 - Recommend the next milestone to implement.
