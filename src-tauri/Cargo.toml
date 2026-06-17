@@ -20,6 +20,8 @@ image = "0.25.10"
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
 winapi = { version = "0.3", features = ["winuser", "libloaderapi", "processthreadsapi", "winbase", "shellapi", "handleapi"] }
+windows = { version = "0.48", features = ["Win32_Foundation", "Win32_System_Com", "Win32_System_Ole", "Win32_UI_Shell"] }
+
 
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!

@@ -305,6 +305,7 @@ dependencies = [
  "tauri-build",
  "uuid",
  "winapi",
+ "windows 0.48.0",
  "xcap",
 ]
 

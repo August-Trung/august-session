@@ -17,6 +17,8 @@ pub struct WindowInfo {
     pub app_name: String,
     pub title: String,
     pub exe_path: String,
+    #[serde(default)]
+    pub launch_args: Option<String>,
     pub x: i32,
     pub y: i32,
     pub w: i32,
@@ -123,6 +125,7 @@ unsafe extern "system" fn enum_windows_with_handles_callback(hwnd: HWND, lparam:
                 app_name,
                 title,
                 exe_path,
+                launch_args: None,
                 x,
                 y,
                 w,
@@ -136,11 +139,33 @@ unsafe extern "system" fn enum_windows_with_handles_callback(hwnd: HWND, lparam:
 }
 
 pub fn enumerate_windows_with_handles() -> Vec<WindowWithHandle> {
-    let mut list = Vec::new();
+    let mut list: Vec<WindowWithHandle> = Vec::new();
     let lparam = &mut list as *mut Vec<WindowWithHandle> as LPARAM;
     unsafe {
         EnumWindows(Some(enum_windows_with_handles_callback), lparam);
     }
+
+    // Post-process to extract folder paths from File Explorer
+    let explorer_paths = crate::explorer::get_explorer_paths();
+    for item in &mut list {
+        let app_name_lower = item.info.app_name.to_lowercase();
+        if app_name_lower == "explorer.exe" {
+            let hwnd_val = item.hwnd as isize;
+            if let Some(path) = explorer_paths.get(&hwnd_val) {
+                item.info.launch_args = Some(path.clone());
+            }
+        } else if app_name_lower == "msedge.exe"
+            || app_name_lower == "chrome.exe"
+            || app_name_lower == "firefox.exe"
+            || app_name_lower == "brave.exe"
+            || app_name_lower == "opera.exe"
+        {
+            item.info.launch_args = Some("--restore-last-session".to_string());
+        } else if let Some(path) = crate::title_parser::extract_launch_args(&item.info.app_name, &item.info.title) {
+            item.info.launch_args = Some(path);
+        }
+    }
+
     list
 }
 
@@ -151,25 +176,74 @@ pub fn close_window(hwnd: HWND) {
 }
 
 pub fn restore_windows(windows: Vec<WindowInfo>) {
+    use std::collections::HashSet;
     use std::ffi::OsStr;
     use winapi::um::shellapi::ShellExecuteW;
     use winapi::um::winuser::{SWP_NOACTIVATE, SWP_NOZORDER, SWP_SHOWWINDOW, SW_SHOWNORMAL};
 
+    let mut launched_browsers = HashSet::new();
+
     for w in &windows {
         if Path::new(&w.exe_path).exists() {
+            let app_name_lower = w.app_name.to_lowercase();
+            let is_browser = app_name_lower == "msedge.exe"
+                || app_name_lower == "chrome.exe"
+                || app_name_lower == "firefox.exe"
+                || app_name_lower == "brave.exe"
+                || app_name_lower == "opera.exe";
+
+            if is_browser {
+                if launched_browsers.contains(&w.exe_path) {
+                    continue; // Skip duplicate launches for browser session
+                }
+                launched_browsers.insert(w.exe_path.clone());
+            }
+
             let path_wide: Vec<u16> = OsStr::new(&w.exe_path)
                 .encode_wide()
                 .chain(Some(0))
                 .collect();
-            unsafe {
+
+            let params_wide: Option<Vec<u16>> = if let Some(ref args) = w.launch_args {
+                let final_args = if args.starts_with("--") {
+                    args.clone()
+                } else {
+                    format!("\"{}\"", args)
+                };
+                Some(OsStr::new(&final_args)
+                    .encode_wide()
+                    .chain(Some(0))
+                    .collect())
+            } else {
+                None
+            };
+
+            let params_ptr = params_wide
+                .as_ref()
+                .map(|p| p.as_ptr())
+                .unwrap_or(std::ptr::null());
+
+            let res = unsafe {
                 ShellExecuteW(
                     std::ptr::null_mut(),
                     std::ptr::null_mut(),
                     path_wide.as_ptr(),
-                    std::ptr::null_mut(),
+                    params_ptr,
                     std::ptr::null_mut(),
                     SW_SHOWNORMAL,
-                );
+                )
+            };
+            if (res as isize) <= 32 && !params_ptr.is_null() {
+                unsafe {
+                    ShellExecuteW(
+                        std::ptr::null_mut(),
+                        std::ptr::null_mut(),
+                        path_wide.as_ptr(),
+                        std::ptr::null_mut(),
+                        std::ptr::null_mut(),
+                        SW_SHOWNORMAL,
+                    );
+                }
             }
         }
     }
@@ -177,12 +251,13 @@ pub fn restore_windows(windows: Vec<WindowInfo>) {
     // Delay repositioning on a background thread to let windows launch
     std::thread::spawn(move || {
         std::thread::sleep(std::time::Duration::from_millis(1500));
-        let active_windows = enumerate_windows_with_handles();
+        let mut active_windows = enumerate_windows_with_handles();
         for saved_w in &windows {
-            if let Some(active) = active_windows
+            if let Some(pos) = active_windows
                 .iter()
-                .find(|act| act.info.exe_path == saved_w.exe_path)
+                .position(|act| act.info.exe_path == saved_w.exe_path)
             {
+                let active = active_windows.remove(pos);
                 unsafe {
                     winapi::um::winuser::SetWindowPos(
                         active.hwnd,

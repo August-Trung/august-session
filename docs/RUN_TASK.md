@@ -46,7 +46,10 @@ Current status:
 - M3 is complete.
 - M4 is complete.
 - August Session v0.1.0 MVP is fully completed.
-- Now working on v0.2.0 Smarter Window Restoration.
+- M5 is complete.
+- M6 is complete.
+- M7 is complete.
+- August Session v0.2.0 Smarter Window Restoration is fully completed.
 
 Rules:
 
@@ -61,7 +64,7 @@ Rules:
 
 Current milestone:
 
-M5 — Launch Argument Extraction
+- All Milestones (M5, M6, M7) for v0.2.0 are completed successfully.
 
 Requirements:
 

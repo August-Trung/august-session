@@ -5,6 +5,8 @@ mod capture;
 mod db;
 mod tray;
 mod window_manager;
+mod explorer;
+mod title_parser;
 
 use std::sync::Mutex;
 use tauri::{GlobalShortcutManager, Manager};
