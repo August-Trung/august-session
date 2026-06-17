@@ -50,6 +50,10 @@ Current status:
 - M6 is complete.
 - M7 is complete.
 - August Session v0.2.0 Smarter Window Restoration is fully completed.
+- M8 is complete.
+- M9 is complete.
+- M10 is complete.
+- August Session v0.3.0 Granular Tab Restoration is fully completed.
 
 Rules:
 
@@ -64,7 +68,7 @@ Rules:
 
 Current milestone:
 
-- All Milestones (M5, M6, M7) for v0.2.0 are completed successfully.
+- All Milestones (M8, M9, M10) for v0.3.0 are completed successfully.
 
 Requirements:
 
