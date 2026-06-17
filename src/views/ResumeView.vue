@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { appDir, join } from '@tauri-apps/api/path'
 import { convertFileSrc, invoke } from '@tauri-apps/api/tauri'
 import { listen } from '@tauri-apps/api/event'
 import RememberList, { MomentInfo } from '../components/RememberList.vue'
@@ -12,16 +11,14 @@ const activeScreenshotUrl = ref('')
 const loadMoments = async () => {
   try {
     const list: any[] = await invoke('get_moments')
-    const baseDir = await appDir()
     
-    // Resolve absolute urls for screenshots
-    const mappedList = await Promise.all(list.map(async (m) => {
-      const fullPath = await join(baseDir, 'screenshots', m.screenshot)
+    // Resolve absolute urls for screenshots using paths resolved by the backend
+    const mappedList = list.map((m) => {
       return {
         ...m,
-        screenshotUrl: convertFileSrc(fullPath)
+        screenshotUrl: convertFileSrc(m.screenshot_path)
       }
-    }))
+    })
     
     moments.value = mappedList
     if (mappedList.length > 0) {

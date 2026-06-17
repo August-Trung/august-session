@@ -88,10 +88,49 @@ fn save_moment(
     Ok(())
 }
 
+#[derive(serde::Serialize)]
+struct MomentResponse {
+    id: String,
+    words: String,
+    windows: String,
+    screenshot: String,
+    screenshot_path: String,
+    created_at: String,
+}
+
 #[tauri::command]
-fn get_moments(state: tauri::State<DbState>) -> Result<Vec<db::MomentRecord>, String> {
+fn get_moments(
+    state: tauri::State<DbState>,
+    app_handle: tauri::AppHandle,
+) -> Result<Vec<MomentResponse>, String> {
     let conn = state.0.lock().map_err(|e| e.to_string())?;
-    db::get_moments(&conn).map_err(|e| e.to_string())
+    let records = db::get_moments(&conn).map_err(|e| e.to_string())?;
+
+    let app_data_dir = app_handle
+        .path_resolver()
+        .app_data_dir()
+        .ok_or_else(|| "Failed to get app data directory".to_string())?;
+
+    let response = records
+        .into_iter()
+        .map(|r| {
+            let screenshot_path = app_data_dir
+                .join("screenshots")
+                .join(&r.screenshot)
+                .to_string_lossy()
+                .into_owned();
+            MomentResponse {
+                id: r.id,
+                words: r.words,
+                windows: r.windows,
+                screenshot: r.screenshot,
+                screenshot_path,
+                created_at: r.created_at,
+            }
+        })
+        .collect();
+
+    Ok(response)
 }
 
 #[tauri::command]
