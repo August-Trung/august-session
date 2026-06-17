@@ -7,6 +7,7 @@ mod tray;
 mod window_manager;
 mod explorer;
 mod title_parser;
+mod api_server;
 
 use std::sync::Mutex;
 use tauri::{GlobalShortcutManager, Manager};
@@ -31,7 +32,7 @@ fn save_moment(
     std::thread::sleep(std::time::Duration::from_millis(150));
 
     // 1. Enumerate visible windows in memory (with handles)
-    let windows_with_handles = window_manager::enumerate_windows_with_handles();
+    let windows_with_handles = window_manager::enumerate_windows_with_handles(true);
 
     // 2. Generate a unique ID and screenshot file paths
     let id = uuid::Uuid::new_v4().to_string();
@@ -195,6 +196,9 @@ fn main() {
                 .path_resolver()
                 .app_data_dir()
                 .expect("Failed to get app data directory");
+
+            // Start the local API server for companion extension
+            api_server::start_server();
 
             // Setup database
             let conn =

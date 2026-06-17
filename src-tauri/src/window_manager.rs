@@ -138,7 +138,7 @@ unsafe extern "system" fn enum_windows_with_handles_callback(hwnd: HWND, lparam:
     1
 }
 
-pub fn enumerate_windows_with_handles() -> Vec<WindowWithHandle> {
+pub fn enumerate_windows_with_handles(capture_tabs: bool) -> Vec<WindowWithHandle> {
     let mut list: Vec<WindowWithHandle> = Vec::new();
     let lparam = &mut list as *mut Vec<WindowWithHandle> as LPARAM;
     unsafe {
@@ -147,6 +147,16 @@ pub fn enumerate_windows_with_handles() -> Vec<WindowWithHandle> {
 
     // Post-process to extract folder paths from File Explorer
     let explorer_paths = crate::explorer::get_explorer_paths();
+
+    let mut captured_tabs: Option<Vec<crate::api_server::CapturedTab>> = None;
+    if capture_tabs {
+        if let Some(json_str) = crate::api_server::trigger_capture_tabs() {
+            if let Ok(tabs) = serde_json::from_str::<Vec<crate::api_server::CapturedTab>>(&json_str) {
+                captured_tabs = Some(tabs);
+            }
+        }
+    }
+
     for item in &mut list {
         let app_name_lower = item.info.app_name.to_lowercase();
         if app_name_lower == "explorer.exe" {
@@ -160,7 +170,36 @@ pub fn enumerate_windows_with_handles() -> Vec<WindowWithHandle> {
             || app_name_lower == "brave.exe"
             || app_name_lower == "opera.exe"
         {
-            item.info.launch_args = Some("--restore-last-session".to_string());
+            let mut resolved = false;
+            if let Some(ref tabs) = captured_tabs {
+                let win_title = item.info.title.to_lowercase();
+                
+                // Match by finding an active tab whose title is a substring of the window title
+                let matched_window_id = tabs.iter()
+                    .find(|t| t.active && win_title.contains(&t.title.to_lowercase()))
+                    .map(|t| t.window_id);
+
+                if let Some(win_id) = matched_window_id {
+                    let mut window_tabs: Vec<&crate::api_server::CapturedTab> = tabs.iter()
+                        .filter(|t| t.window_id == win_id)
+                        .collect();
+                    window_tabs.sort_by_key(|t| t.index);
+                    
+                    let urls: Vec<String> = window_tabs.into_iter()
+                        .map(|t| t.url.clone())
+                        .collect();
+
+                    if let Ok(urls_json) = serde_json::to_string(&urls) {
+                        item.info.launch_args = Some(urls_json);
+                        resolved = true;
+                    }
+                }
+            }
+
+            if !resolved {
+                // Fallback to v0.2.0 behavior
+                item.info.launch_args = Some("--restore-last-session".to_string());
+            }
         } else if let Some(path) = crate::title_parser::extract_launch_args(&item.info.app_name, &item.info.title) {
             item.info.launch_args = Some(path);
         }
@@ -193,10 +232,16 @@ pub fn restore_windows(windows: Vec<WindowInfo>) {
                 || app_name_lower == "opera.exe";
 
             if is_browser {
-                if launched_browsers.contains(&w.exe_path) {
-                    continue; // Skip duplicate launches for browser session
+                let is_session_restore = w.launch_args.as_ref()
+                    .map(|args| !args.starts_with("["))
+                    .unwrap_or(true);
+
+                if is_session_restore {
+                    if launched_browsers.contains(&w.exe_path) {
+                        continue; // Skip duplicate launches for browser session
+                    }
+                    launched_browsers.insert(w.exe_path.clone());
                 }
-                launched_browsers.insert(w.exe_path.clone());
             }
 
             let path_wide: Vec<u16> = OsStr::new(&w.exe_path)
@@ -205,7 +250,16 @@ pub fn restore_windows(windows: Vec<WindowInfo>) {
                 .collect();
 
             let params_wide: Option<Vec<u16>> = if let Some(ref args) = w.launch_args {
-                let final_args = if args.starts_with("--") {
+                let final_args = if args.starts_with("[") {
+                    if let Ok(urls) = serde_json::from_str::<Vec<String>>(args) {
+                        urls.iter()
+                            .map(|url| format!("\"{}\"", url))
+                            .collect::<Vec<String>>()
+                            .join(" ")
+                    } else {
+                        args.clone()
+                    }
+                } else if args.starts_with("--") {
                     args.clone()
                 } else {
                     format!("\"{}\"", args)
@@ -251,7 +305,7 @@ pub fn restore_windows(windows: Vec<WindowInfo>) {
     // Delay repositioning on a background thread to let windows launch
     std::thread::spawn(move || {
         std::thread::sleep(std::time::Duration::from_millis(1500));
-        let mut active_windows = enumerate_windows_with_handles();
+        let mut active_windows = enumerate_windows_with_handles(false);
         for saved_w in &windows {
             if let Some(pos) = active_windows
                 .iter()
