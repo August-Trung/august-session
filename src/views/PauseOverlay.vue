@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { appWindow } from '@tauri-apps/api/window'
+import { invoke } from '@tauri-apps/api/tauri'
 
 const words = ref('')
 const closeEverything = ref(false)
@@ -17,11 +17,15 @@ onMounted(() => {
 })
 
 const submitPause = async () => {
-  console.log("Submitting pause:", { words: words.value, closeEverything: closeEverything.value })
+  const note = words.value.trim()
+  if (!note) return
   try {
-    await appWindow.close()
+    await invoke('save_moment', {
+      words: note,
+      closeEverything: closeEverything.value
+    })
   } catch (e) {
-    console.error("Failed to close window:", e)
+    console.error("Failed to save moment:", e)
   }
 }
 </script>
@@ -31,7 +35,7 @@ const submitPause = async () => {
     <v-card-title class="text-h6 font-weight-bold px-0 pb-1">
       August Session
     </v-card-title>
-    <v-card-subtitle class="px-0 pb-4 text-grey-darken-1">
+    <v-card-subtitle class="px-0 pb-3 text-grey-darken-1">
       What should you remember?
     </v-card-subtitle>
     
@@ -43,7 +47,7 @@ const submitPause = async () => {
       rows="3"
       no-resize
       hide-details
-      class="mb-4"
+      class="mb-3"
       @keydown.enter.prevent="submitPause"
     ></v-textarea>
 
@@ -53,7 +57,7 @@ const submitPause = async () => {
       color="primary"
       density="compact"
       hide-details
-      class="mb-4"
+      class="mb-2"
     ></v-checkbox>
 
     <v-card-actions class="justify-end px-0 mt-auto">

@@ -54,7 +54,7 @@ pub fn trigger_pause_overlay(app: &AppHandle) {
             tauri::WindowUrl::App("index.html#/pause".into()),
         )
         .title("What should you remember?")
-        .inner_size(500.0, 300.0)
+        .inner_size(500.0, 340.0)
         .resizable(false)
         .decorations(false) // Frameless
         .always_on_top(true)

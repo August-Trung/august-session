@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::ffi::OsString;
-use std::os::windows::ffi::OsStringExt;
+use std::os::windows::ffi::{OsStrExt, OsStringExt};
 use std::path::Path;
 use winapi::shared::minwindef::{BOOL, DWORD, LPARAM};
 use winapi::shared::windef::{HWND, RECT};
@@ -21,6 +21,11 @@ pub struct WindowInfo {
     pub y: i32,
     pub w: i32,
     pub h: i32,
+}
+
+pub struct WindowWithHandle {
+    pub info: WindowInfo,
+    pub hwnd: HWND,
 }
 
 fn get_window_title(hwnd: HWND) -> String {
@@ -66,9 +71,9 @@ fn get_exe_path(hwnd: HWND) -> String {
     }
 }
 
-unsafe extern "system" fn enum_windows_callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
+unsafe extern "system" fn enum_windows_with_handles_callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
     if IsWindowVisible(hwnd) == 0 {
-        return 1; // Continue
+        return 1;
     }
 
     let title = get_window_title(hwnd);
@@ -76,13 +81,11 @@ unsafe extern "system" fn enum_windows_callback(hwnd: HWND, lparam: LPARAM) -> B
         return 1;
     }
 
-    // Check if it's the root owner window
     let root = GetAncestor(hwnd, GA_ROOTOWNER);
     if root != hwnd {
         return 1;
     }
 
-    // Filter out common Windows shell overlays
     if title == "Program Manager" || title == "Start" || title == "Settings" {
         return 1;
     }
@@ -114,26 +117,84 @@ unsafe extern "system" fn enum_windows_callback(hwnd: HWND, lparam: LPARAM) -> B
             .unwrap_or("Unknown")
             .to_string();
 
-        let list = &mut *(lparam as *mut Vec<WindowInfo>);
-        list.push(WindowInfo {
-            app_name,
-            title,
-            exe_path,
-            x,
-            y,
-            w,
-            h,
+        let list = &mut *(lparam as *mut Vec<WindowWithHandle>);
+        list.push(WindowWithHandle {
+            info: WindowInfo {
+                app_name,
+                title,
+                exe_path,
+                x,
+                y,
+                w,
+                h,
+            },
+            hwnd,
         });
     }
 
-    1 // Continue
+    1
 }
 
-pub fn enumerate_windows() -> Vec<WindowInfo> {
+pub fn enumerate_windows_with_handles() -> Vec<WindowWithHandle> {
     let mut list = Vec::new();
-    let lparam = &mut list as *mut Vec<WindowInfo> as LPARAM;
+    let lparam = &mut list as *mut Vec<WindowWithHandle> as LPARAM;
     unsafe {
-        EnumWindows(Some(enum_windows_callback), lparam);
+        EnumWindows(Some(enum_windows_with_handles_callback), lparam);
     }
     list
+}
+
+pub fn close_window(hwnd: HWND) {
+    unsafe {
+        winapi::um::winuser::PostMessageW(hwnd, winapi::um::winuser::WM_CLOSE, 0, 0);
+    }
+}
+
+pub fn restore_windows(windows: Vec<WindowInfo>) {
+    use std::ffi::OsStr;
+    use winapi::um::shellapi::ShellExecuteW;
+    use winapi::um::winuser::{SWP_NOACTIVATE, SWP_NOZORDER, SWP_SHOWWINDOW, SW_SHOWNORMAL};
+
+    for w in &windows {
+        if Path::new(&w.exe_path).exists() {
+            let path_wide: Vec<u16> = OsStr::new(&w.exe_path)
+                .encode_wide()
+                .chain(Some(0))
+                .collect();
+            unsafe {
+                ShellExecuteW(
+                    std::ptr::null_mut(),
+                    std::ptr::null_mut(),
+                    path_wide.as_ptr(),
+                    std::ptr::null_mut(),
+                    std::ptr::null_mut(),
+                    SW_SHOWNORMAL,
+                );
+            }
+        }
+    }
+
+    // Delay repositioning on a background thread to let windows launch
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(1500));
+        let active_windows = enumerate_windows_with_handles();
+        for saved_w in &windows {
+            if let Some(active) = active_windows
+                .iter()
+                .find(|act| act.info.exe_path == saved_w.exe_path)
+            {
+                unsafe {
+                    winapi::um::winuser::SetWindowPos(
+                        active.hwnd,
+                        std::ptr::null_mut(),
+                        saved_w.x,
+                        saved_w.y,
+                        saved_w.w,
+                        saved_w.h,
+                        SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW,
+                    );
+                }
+            }
+        }
+    });
 }
