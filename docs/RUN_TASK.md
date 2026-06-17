@@ -18,6 +18,14 @@ Read these v0.1.0 documents:
 - V010_MODULE_DEPENDENCY_GRAPH.md
 - V010_FILE_STRUCTURE.md
 
+Read these v0.2.0 documents:
+
+- V020_IMPLEMENTATION_PLAN.md
+- V020_IMPLEMENTATION_TASKS.md
+- V020_CODE_ORDER.md
+- V020_MODULE_DEPENDENCY_GRAPH.md
+- V020_FILE_STRUCTURE.md
+
 Project:
 
 August Session
@@ -38,22 +46,31 @@ Current status:
 - M3 is complete.
 - M4 is complete.
 - August Session v0.1.0 MVP is fully completed.
+- Now working on v0.2.0 Smarter Window Restoration.
 
 Rules:
 
-- Follow V010_FILE_STRUCTURE.md.
-- Follow V010_CODE_ORDER.md.
-- Follow V010_IMPLEMENTATION_TASKS.md.
+- Follow V020_FILE_STRUCTURE.md.
+- Follow V020_CODE_ORDER.md.
+- Follow V020_IMPLEMENTATION_TASKS.md.
 - Follow ARCHITECTURE.md.
+- Preserve backward compatibility with v0.1.0 Moments.
+- Do not redesign architecture.
+- Do not change task order.
+- Do not modify frontend files unless explicitly required.
 
 Current milestone:
 
-Completed
+M5 — Launch Argument Extraction
 
 Requirements:
 
-- August Session v0.1.0 MVP is fully implemented and ready for verification/release testing.
+- Resume from the first unfinished task.
+- Inspect existing files before making changes.
+- Previous work may have been interrupted because of quota limits.
+- Determine what has already been completed.
 
 Output:
 
-1. Verification and walkthrough details.
+1. Updated code for the current milestone.
+2. Update this file (RUN_TASK.md) with the current milestone status when a milestone is complete.
