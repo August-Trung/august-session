@@ -1,39 +1,77 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { appDir, join } from '@tauri-apps/api/path'
+import { convertFileSrc, invoke } from '@tauri-apps/api/tauri'
+import { listen } from '@tauri-apps/api/event'
 import RememberList, { MomentInfo } from '../components/RememberList.vue'
-import mockDesktop from '../assets/mock_desktop.png'
 
-// Mock data for M3 layout validation
-const mockMoments = ref<MomentInfo[]>([
-  {
-    id: '1',
-    words: 'Finish the last 3 slides. Print worksheets for Period 3.',
-    screenshot: mockDesktop,
-    created_at: '2026-06-16T17:18:00+07:00',
-  },
-  {
-    id: '2',
-    words: 'Check if the Airbnb near Sagrada Família has a crib.',
-    screenshot: mockDesktop,
-    created_at: '2026-06-15T20:45:00+07:00',
-  },
-  {
-    id: '3',
-    words: 'Dado blade width matters — check before ordering lumber.',
-    screenshot: mockDesktop,
-    created_at: '2026-06-14T18:30:00+07:00',
-  },
-])
+const moments = ref<MomentInfo[]>([])
+const activeMoment = ref<MomentInfo | null>(null)
+const activeScreenshotUrl = ref('')
 
-const activeMoment = ref<MomentInfo>(mockMoments.value[0])
+const loadMoments = async () => {
+  try {
+    const list: any[] = await invoke('get_moments')
+    const baseDir = await appDir()
+    
+    // Resolve absolute urls for screenshots
+    const mappedList = await Promise.all(list.map(async (m) => {
+      const fullPath = await join(baseDir, 'screenshots', m.screenshot)
+      return {
+        ...m,
+        screenshotUrl: convertFileSrc(fullPath)
+      }
+    }))
+    
+    moments.value = mappedList
+    if (mappedList.length > 0) {
+      activeMoment.value = mappedList[0]
+      activeScreenshotUrl.value = mappedList[0].screenshotUrl
+    } else {
+      activeMoment.value = null
+      activeScreenshotUrl.value = ''
+    }
+  } catch (e) {
+    console.error("Failed to load moments:", e)
+  }
+}
+
+onMounted(async () => {
+  await loadMoments()
+
+  // Real-time update list when moment is saved or deleted
+  await listen('moment_saved', () => {
+    loadMoments()
+  })
+
+  await listen('moment_deleted', () => {
+    loadMoments()
+  })
+})
 
 const selectMoment = (moment: MomentInfo) => {
   activeMoment.value = moment
+  activeScreenshotUrl.value = (moment as any).screenshotUrl
 }
 
-const reopenDesk = () => {
-  console.log("Reopening desk layout for:", activeMoment.value.words)
-  // In M4: connect restore Tauri IPC command
+const reopenDesk = async () => {
+  if (!activeMoment.value) return
+  console.log("Restoring desk for moment:", activeMoment.value.id)
+  try {
+    await invoke('restore_moment', { id: activeMoment.value.id })
+  } catch (e) {
+    console.error("Failed to restore moment:", e)
+  }
+}
+
+const deleteMoment = async () => {
+  if (!activeMoment.value) return
+  if (!confirm("Are you sure you want to delete this Moment?")) return
+  try {
+    await invoke('delete_moment', { id: activeMoment.value.id })
+  } catch (e) {
+    console.error("Failed to delete moment:", e)
+  }
 }
 
 const formatDateRelative = (dateStr: string) => {
@@ -54,63 +92,87 @@ const formatDateRelative = (dateStr: string) => {
   <v-container class="py-12 px-6 main-container" fluid>
     <v-row justify="center">
       <v-col cols="12" sm="10" md="8" lg="6">
-        <!-- Main Words Display -->
-        <div class="text-center mb-8">
-          <div class="text-subtitle-1 text-grey-darken-1 mb-2 font-weight-medium uppercase-label">
-            Welcome back. You left off here:
-          </div>
-          <div class="text-h4 font-weight-bold text-white px-4 py-2 words-highlight">
-            "{{ activeMoment.words || '(No message left)' }}"
-          </div>
-          <div class="text-caption text-grey-darken-2 mt-2">
-            — Captured {{ formatDateRelative(activeMoment.created_at) }}
+        
+        <!-- EMPTY STATE -->
+        <div v-if="!activeMoment" class="text-center py-12">
+          <v-icon icon="mdi-help-box" size="80" class="text-grey-darken-3 mb-4"></v-icon>
+          <div class="text-h5 font-weight-bold text-white mb-2">Your desk is empty.</div>
+          <div class="text-subtitle-1 text-grey-darken-1 mb-6">
+            Press <v-chip class="mx-1" variant="outlined" density="compact" label>Ctrl+Shift+P</v-chip> to capture your first Moment!
           </div>
         </div>
 
-        <!-- Desk Photograph Preview -->
-        <v-hover v-slot="{ isHovering, props }">
-          <v-card
-            v-bind="props"
-            class="mx-auto rounded-lg border-thin overflow-hidden mb-8 desk-card"
-            elevation="12"
-            max-width="560"
-            @click="reopenDesk"
-          >
-            <v-img
-              :src="activeMoment.screenshot"
-              aspect-ratio="16/9"
-              cover
-              class="desk-img"
+        <div v-else>
+          <!-- Main Words Display -->
+          <div class="text-center mb-8">
+            <div class="text-subtitle-1 text-grey-darken-1 mb-2 font-weight-medium uppercase-label">
+              Welcome back. You left off here:
+            </div>
+            <div class="text-h4 font-weight-bold text-white px-4 py-2 words-highlight">
+              "{{ activeMoment.words || '(No message left)' }}"
+            </div>
+            <div class="text-caption text-grey-darken-2 mt-2">
+              — Captured {{ formatDateRelative(activeMoment.created_at) }}
+            </div>
+          </div>
+
+          <!-- Desk Photograph Preview -->
+          <v-hover v-slot="{ isHovering, props }">
+            <v-card
+              v-bind="props"
+              class="mx-auto rounded-lg border-thin overflow-hidden mb-8 desk-card"
+              elevation="12"
+              max-width="560"
+              @click="reopenDesk"
             >
-              <div
-                class="fill-height d-flex align-center justify-center overlay-effect"
-                :class="{ 'show-overlay': isHovering }"
+              <v-img
+                :src="activeScreenshotUrl"
+                aspect-ratio="16/9"
+                cover
+                class="desk-img"
               >
-                <v-icon icon="mdi-play-circle" size="72" color="white"></v-icon>
-              </div>
-            </v-img>
-          </v-card>
-        </v-hover>
+                <div
+                  class="fill-height d-flex align-center justify-center overlay-effect"
+                  :class="{ 'show-overlay': isHovering }"
+                >
+                  <v-icon icon="mdi-play-circle" size="72" color="white"></v-icon>
+                </div>
+              </v-img>
+            </v-card>
+          </v-hover>
 
-        <!-- Main Action Button -->
-        <div class="text-center mb-12">
-          <v-btn
-            color="primary"
-            size="large"
-            variant="flat"
-            class="rounded-lg px-8 py-3 font-weight-bold"
-            prepend-icon="mdi-arrow-right-drop-circle-outline"
-            @click="reopenDesk"
-          >
-            Reopen My Desk
-          </v-btn>
+          <!-- Action Buttons -->
+          <div class="text-center d-flex justify-center align-center gap-4 mb-12">
+            <v-btn
+              color="primary"
+              size="large"
+              variant="flat"
+              class="rounded-lg px-8 py-3 font-weight-bold mr-4"
+              prepend-icon="mdi-arrow-right-drop-circle-outline"
+              @click="reopenDesk"
+            >
+              Reopen My Desk
+            </v-btn>
+
+            <v-btn
+              color="error"
+              size="large"
+              variant="outlined"
+              class="rounded-lg px-6 py-3 font-weight-bold"
+              prepend-icon="mdi-trash-can-outline"
+              @click="deleteMoment"
+            >
+              Delete
+            </v-btn>
+          </div>
         </div>
 
-        <v-divider class="mb-10 border-opacity-25"></v-divider>
+        <v-divider v-if="moments.length > 0" class="mb-10 border-opacity-25"></v-divider>
 
         <!-- History Journal List -->
         <RememberList
-          :moments="mockMoments"
+          v-if="moments.length > 0 && activeMoment"
+          :moments="moments"
           :selectedId="activeMoment.id"
           @select="selectMoment"
         />
@@ -150,5 +212,8 @@ const formatDateRelative = (dateStr: string) => {
 }
 .show-overlay {
   opacity: 1;
+}
+.gap-4 {
+  gap: 16px;
 }
 </style>

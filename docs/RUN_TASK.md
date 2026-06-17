@@ -36,11 +36,8 @@ Current status:
 - M1 is complete.
 - M2 is complete.
 - M3 is complete.
-- Continue from the current repository state.
-- Inspect existing files before making changes.
-- Previous work may have been interrupted because of quota limits.
-- Determine what has already been completed.
-- Resume from the first unfinished task.
+- M4 is complete.
+- August Session v0.1.0 MVP is fully completed.
 
 Rules:
 
@@ -48,51 +45,15 @@ Rules:
 - Follow V010_CODE_ORDER.md.
 - Follow V010_IMPLEMENTATION_TASKS.md.
 - Follow ARCHITECTURE.md.
-- Preserve backward compatibility with v0.1.0.
-- Do not redesign architecture.
-- Do not change task order.
-- Do not add features outside v0.1.0.
-- Do not over-engineer.
-- Keep code simple and maintainable.
-- Reuse existing modules whenever possible.
-- Prefer modifying existing files instead of rewriting.
-- Keep the application buildable after each task.
-- Do not redo completed work.
-- Modify completed code only when required for integration or bug fixing.
-- Inspect existing code before editing.
-- Finish one task before moving to the next.
-- Test after each task.
 
 Current milestone:
 
-M4
+Completed
 
 Requirements:
 
-- Read V010_IMPLEMENTATION_TASKS.md carefully.
-- Determine which M4 tasks are already completed.
-- Resume from the first unfinished task.
-- Follow the exact task order and dependencies defined in V010_IMPLEMENTATION_TASKS.md.
-- Do not skip tasks.
-- Do not reorder tasks.
-- Stop when M4 is fully completed.
+- August Session v0.1.0 MVP is fully implemented and ready for verification/release testing.
 
 Output:
 
-1. Current progress summary.
-2. Completed M4 tasks.
-3. Current task being implemented.
-4. Files created.
-5. Files modified.
-6. Important implementation notes.
-7. Manual test steps.
-8. Known limitations.
-9. Suggested commit message.
-
-When M4 is fully completed:
-
-- Stop instead of starting verification/release.
-- Provide an M4 completion summary.
-- List remaining milestones.
-- Identify technical debt and follow-up work.
-- Recommend the next milestone to implement.
+1. Verification and walkthrough details.
